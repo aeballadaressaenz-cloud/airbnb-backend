@@ -147,4 +147,53 @@ router.get('/perfil', verificarToken, async (req, res) => {
     }
 });
 
+/**
+ * @swagger
+ * /api/usuarios/perfil:
+ *   put:
+ *     summary: Actualizar perfil del usuario logueado
+ *     tags: [Usuarios]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nombre:
+ *                 type: string
+ *               apellido:
+ *                 type: string
+ *               telefono:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Perfil actualizado exitosamente
+ *       401:
+ *         description: Token requerido
+ */
+router.put('/perfil', verificarToken, async (req, res) => {
+    try {
+        await poolConnect;
+        const { nombre, apellido, telefono } = req.body;
+
+        await pool.request()
+            .input('id_usuario', sql.Int,     req.user.id)
+            .input('nombre',     sql.VarChar,  nombre)
+            .input('apellido',   sql.VarChar,  apellido)
+            .input('telefono',   sql.VarChar,  telefono || null)
+            .query(`UPDATE Usuarios 
+                    SET nombre = @nombre, 
+                        apellido = @apellido, 
+                        telefono = @telefono
+                    WHERE id_usuario = @id_usuario`);
+
+        res.json({ mensaje: 'Perfil actualizado exitosamente.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
