@@ -2,9 +2,13 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
 const { pool, poolConnect, sql } = require('../db');
 const { verificarToken } = require('../middleware/auth');
 require('dotenv').config();
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 /**
  * @swagger
@@ -178,7 +182,6 @@ router.put('/perfil', verificarToken, async (req, res) => {
     try {
         await poolConnect;
         const { nombre, apellido, telefono } = req.body;
-
         await pool.request()
             .input('id_usuario', sql.Int,     req.user.id)
             .input('nombre',     sql.VarChar,  nombre)
@@ -189,8 +192,83 @@ router.put('/perfil', verificarToken, async (req, res) => {
                         apellido = @apellido, 
                         telefono = @telefono
                     WHERE id_usuario = @id_usuario`);
-
         res.json({ mensaje: 'Perfil actualizado exitosamente.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * @swagger
+ * /api/usuarios/perfil/foto:
+ *   put:
+ *     summary: Subir foto de perfil del usuario logueado
+ *     tags: [Usuarios]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               foto:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Foto actualizada exitosamente
+ *       400:
+ *         description: No se recibió foto
+ */
+router.put('/perfil/foto', verificarToken, upload.single('foto'), async (req, res) => {
+    try {
+        await poolConnect;
+        if (!req.file) {
+            return res.status(400).json({ error: 'No se recibió ninguna foto.' });
+        }
+        const fotoBuffer = req.file.buffer;
+        await pool.request()
+            .input('id_usuario',  sql.Int,       req.user.id)
+            .input('foto_perfil', sql.VarBinary,  fotoBuffer)
+            .query('UPDATE Usuarios SET foto_perfil = @foto_perfil WHERE id_usuario = @id_usuario');
+        res.json({ mensaje: 'Foto de perfil actualizada exitosamente.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/**
+ * @swagger
+ * /api/usuarios/{id}/foto:
+ *   get:
+ *     summary: Obtener foto de perfil de un usuario
+ *     tags: [Usuarios]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Foto en formato binario
+ *       404:
+ *         description: Foto no encontrada
+ */
+router.get('/:id/foto', async (req, res) => {
+    try {
+        await poolConnect;
+        const id = parseInt(req.params.id);
+        const result = await pool.request()
+            .input('id_usuario', sql.Int, id)
+            .query('SELECT foto_perfil FROM Usuarios WHERE id_usuario = @id_usuario');
+        if (result.recordset.length === 0 || !result.recordset[0].foto_perfil) {
+            return res.status(404).json({ error: 'Foto no encontrada.' });
+        }
+        res.set('Content-Type', 'image/jpeg');
+        res.send(result.recordset[0].foto_perfil);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
