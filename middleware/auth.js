@@ -17,4 +17,14 @@ const verificarToken = (req, res, next) => {
     }
 };
 
-module.exports = { verificarToken };
+// Debe usarse DESPUÉS de verificarToken, ya que depende de req.user
+const verificarRol = (...rolesPermitidos) => {
+    return (req, res, next) => {
+        if (!rolesPermitidos.includes(req.user.rol)) {
+            return res.status(403).json({ error: 'No tenés permiso para realizar esta acción.' });
+        }
+        next();
+    };
+};
+
+module.exports = { verificarToken, verificarRol };

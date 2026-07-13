@@ -8,6 +8,7 @@ const usuariosRoutes     = require('./routes/usuarios');
 const alojamientosRoutes = require('./routes/alojamientos');
 const reservasRoutes     = require('./routes/reservas');
 const ciudadesRoutes     = require('./routes/ciudades');
+const amenidadesRoutes   = require('./routes/amenidades');
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use('/api/usuarios',     usuariosRoutes);
 app.use('/api/alojamientos', alojamientosRoutes);
 app.use('/api/reservas',     reservasRoutes);
 app.use('/api/ciudades',     ciudadesRoutes);
+app.use('/api/amenidades',   amenidadesRoutes);
 
 // Ruta de prueba
 app.get('/', (req, res) => {

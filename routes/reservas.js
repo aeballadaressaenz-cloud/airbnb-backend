@@ -163,6 +163,19 @@ router.post('/:id/valoracion', verificarToken, async (req, res) => {
     try {
         await poolConnect;
         const { calificacion, comentario } = req.body;
+
+        // Si la reserva ya venció y sigue como pendiente/confirmada, la marcamos completada
+        // (solo si le pertenece al usuario que hace la petición)
+        await pool.request()
+            .input('id_reserva', sql.Int, req.params.id)
+            .input('id_huesped', sql.Int, req.user.id)
+            .query(`UPDATE Reservas
+                    SET estado = 'completada'
+                    WHERE id_reserva = @id_reserva
+                      AND id_huesped = @id_huesped
+                      AND fecha_salida < GETDATE()
+                      AND estado IN ('pendiente', 'confirmada')`);
+
         const result = await pool.request()
             .input('id_reserva',   sql.Int,      req.params.id)
             .input('id_huesped',   sql.Int,      req.user.id)
